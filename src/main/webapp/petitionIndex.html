@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+    <!-- Page metadata and dependencies -->
+
+    <meta charset="UTF-8">
+
+    <title>Petition</title>
+
+    <meta charset="utf-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- External CSS and JS libraries -->
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.8.0/css/bulma.min.css">
+
+    <script defer src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"></script>
+
+    <!-- Mithril.js library for building UI components -->
+
+    <script src="https://unpkg.com/mithril/mithril.js"></script>
+
+    <!-- JWT Decode library for decoding JSON Web Tokens -->
+
+    <script src="https://unpkg.com/jwt-decode@3.0.0/build/jwt-decode.js"></script>
+
+    <!-- Google Sign-In client script for handling user authentication -->
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+</head>
+
+<body>
+
+<script>	
+
+var Petition = {
+
+    userMail: null,
+
+    listTop: [],
+
+    listUser: [],
+
+    listTagged: [],
+
+    signers: [], // Array to store signers of the specified petition       
+
+    // Method to create a new petition
+
+    create: function(user, title, tag) {  
+
+        m.request({
+
+            method: "GET",
+
+            url: "_ah/api/petitionApi/v1/createPetition/"+user+"/"+title+"/"+tag           
+
+        })
+
+        .then(function(result) {
+
+            console.log("Petition créée:", result);
+
+            Petition.loadTopPetitions();
+
+        })
+
+        .catch(function(error) {
+
+            console.error("Erreur lors de la création de la pétition:", error.toString());
+
+            CreatePetitionView.error = "Erreur : impossible de créer une pétition, vérifiez que vous êtes authentifié et que le tag est défini.";            
+
+        });
+
+    },
+
+    // Method to delete a petition
+
+        deletePetition: function(title,author) {
+
+
+    if (Petition.userMail === author) {
+
+    if (!confirm("Voulez-vous vraiment supprimer cette pétition ?")) {
+    return;
+    }  
+
+    m.request({
+
+    method: "DELETE",
+
+    url: "_ah/api/petitionApi/v1/deletePetition/" + encodeURIComponent(title) + "/" + encodeURIComponent(Petition.userMail)
+
+    })
+
+    .then(function(result) {
+    console.log("Résultat de la suppression:", result);
+
+    // Supprimer localement la pétition du tableau
+    if (Array.isArray(Petition.topPetitions)) {
+    Petition.topPetitions = Petition.topPetitions.filter(function(item) {
+        return item.properties.title !== title || item.properties.author !== author;
+    });
+    }
+    // Interface sans rechargement 
+    m.redraw();
+
+    alert("Suppression effectuée avec succès, rafraîchissez la page pour la voir.");
+
+    })  
+    .catch(function(error) {
+
+    alert("Erreur lors de la suppression de la pétition:" + (error.message || JSON.stringify(error)));
+
+    });
+
+    } else {
+    alert("Vous n'êtes pas autorisé à supprimer cette pétition.Soyez conneté pour supprimer votre pétiton");
+    }
+
+    },
+    // Méthode pour trouver les utilisateurs ayant signé une pétition donnée
+      // Function to find signers of a petition
+
+      findSignersOfPetition: function(petitionTitle) {
+        // Reset signers array
+        Petition.signers = [];
+        // Make request to backend to get signers of the specified petition
+        m.request({
+            method: "GET",
+            url: "_ah/api/petitionApi/v1/findSignersOfPetition/" + petitionTitle
+        })
+        .then(function(result) {
+            // Update signers array with the retrieved signers
+            Petition.signers = result.items;
+        })
+        .catch(function(error) {
+            console.error("Erreur lors de la recherche des signataires de la pétition:", error.toString());
+            findSignersOfPetitionView.error = "Erreur : impossible de trouver les signataires de la pétition.";
+        });
+    },
+    // Method to sign a petition
+
+    sign: function(user, title) {
+
+        m.request({
+
+            method: "GET",
+
+            url: "_ah/api/petitionApi/v1/signPetition/"+user+"/"+title
+
+        })
+        .then(function(result) {
+
+            console.log("Petition signed:", result);
+
+        })
+
+        .catch(function(error) {
+
+            console.error("Error signing petition:", error.toString());  
+
+            SignPetitionView.error = "Erreur : impossible de signer cette pétition, vérifiez que vous êtes authentifié et que la pétition existe. Vous avez peut-être déjà signé cette pétition.";   
+
+        });
+
+    },
+    // Method to load top petitions
+
+    loadTopPetitions: function() {
+
+        m.request({
+
+            method: "GET",
+
+            url: "_ah/api/petitionApi/v1/topPetitions/"
+
+        })
+
+        .then(function(result) {
+
+            console.log("got:", result.items);
+
+            Petition.listTop = result.items;
+
+        })
+
+        .catch(function(error) {
+
+            console.error("Error loading top petitions:", error.toString());            
+
+        });
+
+    },
+
+    // Method to load signed petitions for a user
+
+    loadSignedPetitions: function(user) {
+        if (!user) {
+        loadSignedPetitionView.error = "Veuillez entrer un email valide.";
+        return;
+        }
+        
+
+        m.request({
+
+            method: "GET",
+
+            url: "_ah/api/petitionApi/v1/loadSignedPetitions/"+ encodeURIComponent(user)
+
+        })
+
+        .then(function(result) {
+
+            console.log("got:", result.items);
+
+            Petition.listUser = result.items;
+
+        })
+
+        .catch(function(error) {
+
+            console.error("Error loading user petitions:", error.toString());       
+
+            loadSignedPetitionView.error = "Erreur : impossible de récupérer les pétitions signées, vérifiez que cet utilisateur existe.";   
+
+        });
+
+    },
+    // Method to load tagged petitions
+    loadTaggedPetitions: function(tag) {
+
+        m.request({
+
+            method: "GET",
+
+            url: "_ah/api/petitionApi/v1/taggedPetitions/"+tag
+
+        })
+
+        .then(function(result) {
+
+            console.log("got:", result.items);
+
+            Petition.listTagged = result.items;
+
+        })
+
+        .catch(function(error) {
+
+            console.error("Error loading tagged petitions:", error.toString());            
+
+        });
+
+    }
+
+};
+
+// Function to handle the Google Sign-In credential response
+
+function handleCredentialResponse(response) {
+
+    console.log("callback called:"+response.credential);
+
+    const responsePayload = jwt_decode(response.credential);
+
+    console.log('Email: ' + responsePayload.email); 
+
+    console.log('Name: ' + responsePayload.name);
+
+    if(responsePayload.email) Petition.userMail = responsePayload.email;
+
+    else Petition.userMail = responsePayload.name;
+
+    m.redraw();
+}
+
+// View component for displaying the current user information
+
+var CurrentUserView = {
+
+    userMail: null,
+
+    view: function() {
+
+        return m('div', [
+
+            m('div',{class:'subtitle'},"Utilisateur Courant"),
+
+            // Display current user email if available
+
+            Petition.userMail ? m('label', { class: 'label' }, "Utilisateur Courant: " + Petition.userMail) 
+
+                : null,           
+
+            m('label',{class:'label'}, "entrez votre nom :"),
+
+            // Input field for entering an email
+
+            m("input[type=text][placeholder=nom]", {
+
+                value: CurrentUserView.userMail,
+
+                class: 'input is-rounded',
+
+                oninput: function (e) {
+
+                    CurrentUserView.userMail=e.target.value;
+
+                },
+
+            }),
+
+            m('label',{class:'label'}, ""),
+
+            // Button to set the current user email
+
+            m('button',{
+
+                class: 'button is-link',
+
+                onclick: function(e) {
+
+                    Petition.userMail=CurrentUserView.userMail;
+
+                }
+
+            },"ok"),
+
+            m('label',{class:'label'}, ""),
+
+            m('label',{class:'label'}, "ou utiliser votre compte Google :"),    
+
+            // Google Sign-In button
+
+            m('div', [
+
+                m('div', {
+
+                    id: 'g_id_onload',
+
+                    'data-client_id': '315689940834-7th4d5r8t5g37girtgvs157038o9d0im.apps.googleusercontent.com',
+
+                    'data-callback': 'handleCredentialResponse',
+
+                }),
+
+                m('div', { class: 'g_id_signin', 'data-type': 'standard' }),
+
+            ]),
+
+        ]);
+
+    }    
+
+};
+// Object for handling the view and functionality related to creating petitions
+
+var CreatePetitionView = {
+
+    title: "",
+
+    tag: "",
+
+    error: "",
+
+    created: false,
+
+    // View function defining the UI elements for creating a petition
+
+    view: function() {
+
+        return m('div', [
+
+            m('div',{class:'subtitle'},"Créer une Pétition"),
+
+            // Input field for entering a petition title
+
+            m('label',{class:'label'}, "entrer le titre de la pétition :"),            
+
+            m("input[type=text][placeholder=titre]", {
+
+                value: CreatePetitionView.title,
+
+                class: 'input is-rounded',
+
+                // Updates the title value when the input changes
+
+                oninput: function (e) {
+
+                    CreatePetitionView.title=e.target.value;
+
+                    CreatePetitionView.created = false;
+
+                },
+
+            }),
+
+            m('label',{class:'label'}, ""),
+
+            // Input field for entering tags
+
+            m('label',{class:'label'}, "entrer le tag :"),
+
+            m("input[type=text][placeholder=tag1, tag2]", {
+
+                value: CreatePetitionView.tag,
+
+                class: 'input is-rounded',
+
+                // Updates the tag value when the input changes
+
+                oninput: function (e) {
+
+                    CreatePetitionView.tag=e.target.value;
+                    CreatePetitionView.created = false;
+
+                },
+
+            }),
+
+            m('label',{class:'label'}, ""),
+
+            // Button to create a petition; triggers the 'Petition.create' method
+
+            m('button',{
+
+                class: 'button is-link',
+
+                onclick: function(e) {
+
+                    CreatePetitionView.error="";
+
+                    CreatePetitionView.created = true;
+
+                    // Calls the 'Petition.create' method with provided parameters
+
+                    Petition.create(Petition.userMail, CreatePetitionView.title, CreatePetitionView.tag);
+
+                }
+
+            },"créer"),
+
+            // Conditional rendering based on petition creation status or error
+
+            CreatePetitionView.error ? m('label', {class: 'label', style: 'color: red;' }, CreatePetitionView.error)
+
+                : CreatePetitionView.created ? m('label',{class:'label'}, "Vous avez créer la pétition : "+CreatePetitionView.title+" ; tags : "+CreatePetitionView.tag)
+
+                : null,
+
+        ])
+
+    },
+
+};
+
+// Object for handling the view and functionality related to signing petitions
+
+var SignPetitionView = {
+
+    title: "",
+
+    error: "",
+
+    signed: false,
+
+    // View function defining the UI elements for signing a petition
+
+    view: function() {
+
+        return m('div', [
+
+            m('div', { class: 'subtitle' }, "Signer une Pétition"),
+
+            // Input field for entering a petition title to sign
+
+            m('label',{class:'label'}, "entrer le titre de la pétition :"),  
+
+            m("input[type=text][placeholder=titre]", {
+
+                value: SignPetitionView.title,
+
+                class: 'input is-rounded',
+
+                // Updates the title value when the input changes
+
+                oninput: function (e) {
+
+                    SignPetitionView.error="";
+
+                    SignPetitionView.title = e.target.value;
+
+                    SignPetitionView.signed = false;
+
+                },
+
+            }),
+
+            m('label',{class:'label'}, ""),
+
+            // Button to sign a petition; triggers the 'Petition.sign' method
+
+            m('button', {
+
+                class: 'button is-link',
+
+                onclick: function (e) {
+
+                    SignPetitionView.signed = true;
+
+                    // Calls the 'Petition.sign' method with provided parameters
+
+                    Petition.sign(Petition.userMail, SignPetitionView.title);
+
+                } 
+
+            }, "signer"),
+
+            // Conditional rendering based on signing status or error
+
+            SignPetitionView.error ? m('label', {class: 'label', style: 'color: red;' }, SignPetitionView.error)
+
+                : SignPetitionView.signed ? m('label',{class:'label'}, "Vous avez signé la Pétition : "+SignPetitionView.title) 
+
+                : null,
+
+        ])
+
+    }
+
+};
+// View component for displaying the top petitions
+
+var TopPetitionView = {
+
+    oninit: Petition.loadTopPetitions,
+
+    view: function() {
+
+        return m('div', [
+
+            m('div',{class:'subtitle'},"Top Petitions"),
+
+            m('table', {class:'table is-striped'},[
+
+                m('tr', [
+
+                    m('th', {width:"400px"}, "Titre"),
+
+                    m('th', {width:"300px"}, "Auteur"),
+
+                    m('th', {width:"200px"}, "Date"),
+
+                    m('th', {width:"300px"}, "Tag"),
+
+                ]),
+
+                // Map through top petitions and display them in a table
+
+                Petition.listTop.map(function(item) {
+
+                    return m("tr", [
+
+                        m('td', m('label', item.properties.title)),
+
+                        m('td', m('label', item.properties.author)),
+
+                        m('td', m('label', item.properties.date)),
+
+                        m('td', m('label', item.properties.tags)),
+
+                        m('td', m('button', { onclick: function() { Petition.deletePetition(item.properties.title,item.properties.author); } }, "Supprimer")),
+
+                    ])
+
+                })
+
+            ])
+
+        ]);
+
+    },
+
+};
+
+// View component for displaying signed petitions by a user
+
+var loadSignedPetitionView = {
+
+    user: "",
+
+    error: "",
+
+    view: function() {
+
+        return m('div', [
+
+            m('div',{class:'subtitle'},"Pétitions signées par un utilisateur"),
+
+            
+
+            m('label',{class:'label'}, "entrer le mail de l'utilisateur :"),
+
+            m("input[type=text][placeholder=email]", {
+
+                value: loadSignedPetitionView.user,
+
+                class: 'input is-rounded',
+
+                 oninput: function (e) {
+
+                    loadSignedPetitionView.error = "";
+
+                    loadSignedPetitionView.user=e.target.value},
+
+                 }),
+
+            m('label',{class:'label'}, ""),
+
+            // Button to load signed petitions for a user
+
+            m('button',{
+
+                class: 'button is-link',
+                onclick: function(e) {
+                      if (!loadSignedPetitionView.user || loadSignedPetitionView.user.trim() === "") {
+                          loadSignedPetitionView.error = "Veuillez entrer un email valide.";
+                          return;
+                      }
+                     Petition.loadSignedPetitions(loadSignedPetitionView.user.trim());
+                }
+            },"chercher"),
+
+            // Display signed petitions in a table
+
+            m('table', {class:'table is-striped'},[
+
+                m('tr', [
+
+                    m('th', {width:"200px"}, "Titre"),
+
+                    m('th', {width:"200px"}, "Auteur"),
+
+                    m('th', {width:"200px"}, "Date"),
+
+                    m('th', {width:"200px"}, "Tag"),
+
+                ]),
+
+                // Map through signed petitions and display them in a table
+
+                Petition.listUser.map(function(item) {
+
+                    return m("tr", [
+
+                        m('td', m('label', item.properties.title)),
+
+                        m('td', m('label', item.properties.author)),
+
+                        m('td', m('label', item.properties.date)),
+
+                        m('td', m('label', item.properties.tags)),
+
+                    ])
+
+                })
+
+            ]),
+
+            // Display error message if there is an issue loading signed petitions
+
+            loadSignedPetitionView.error ? m('label', {class: 'label', style: 'color: red;' }, loadSignedPetitionView.error) : null,
+
+        ]);
+
+    },
+
+};
+
+// View component pour afficher la liste des personnes ayant signé une pétition 
+
+// View component for finding signers of a petition
+
+    var findSignersOfPetitionView = {
+
+        petitionTitle: "",
+
+        error: "",
+    
+    // Vue pour rechercher les signataires d'une pétition
+        view: function() {
+            return m('div', [
+                m('div', {class:'subtitle'}, "Chercher les Signataires de la Pétition"),
+                m('label', {class:'label'}, "Entrer le titre de la pétition:"),
+                m("input[type=text][placeholder=titre de la pétition]", {
+                    value: findSignersOfPetitionView.petitionTitle,
+                    class: 'input is-rounded',
+                    oninput: function (e) {
+                        findSignersOfPetitionView.error = "";
+                        findSignersOfPetitionView.petitionTitle = e.target.value;
+                    },
+                }),
+                m('label', {class:'label'}, ""),
+            // Button to find signers of the specified petition
+                m('button', {
+                    class: 'button is-link',
+                    onclick: function(e) {
+                        Petition.findSignersOfPetition(findSignersOfPetitionView.petitionTitle);
+                    }
+                }, "chercher"),
+            // Display signers in a table
+                m('table', {class:'table is-striped'}, [
+                    m('tr', [
+                        m('th', {width:"200px"}, "Utilisateurs ayant signé la Pétition"),
+                    // Add other table headers as needed
+                    ]),
+                // Map through signers and display them in a table
+                    Petition.signers.map(function(signer) {
+                        return m("tr", [
+                            m('td', m('label', signer.user)),
+                            // Add other table cells as needed
+                        ]);
+                    })
+                ]),
+            // Display error message if there is an issue finding signers
+                findSignersOfPetitionView.error ? m('label', {class: 'label', style: 'color: red;' }, findSignersOfPetitionView.error) : null,
+            ]);
+        }
+    };
+
+// View component for displaying tagged petitions based on a specific tag
+
+var TaggedPetitionView = {
+
+    tag: "",
+
+    view: function() {
+
+        return m('div', [
+
+            // Display the subtitle for the section
+
+			m('div',{class:'subtitle'},"Tagged Petitions"),
+
+            // Input field for entering a tag
+
+			m('label',{class:'label'}, "entrer un tag :"),
+
+			m("input[type=text][placeholder=tag]", {
+
+				value: TaggedPetitionView.tag,
+
+				class: 'input is-rounded',
+
+				 oninput: function (e) {
+
+					TaggedPetitionView.tag=e.target.value},
+
+    		}),
+            m('label',{class:'label'}, ""),
+
+			// Button to initiate the retrieval of tagged petitions
+
+			m('button',{
+
+				class: 'button is-link',
+
+				onclick: function(e) {
+
+                    Petition.loadTaggedPetitions(TaggedPetitionView.tag)
+
+                }
+
+            },"chercher"),
+
+	        // Display a table to present the tagged petitions retrieved
+
+	        m('table', {class:'table is-striped'},[
+
+    	        m('tr', [
+
+                    m('th', {width:"200px"}, "Titre"),
+
+                    m('th', {width:"200px"}, "Auteur"),
+
+                    m('th', {width:"200px"}, "Date"),
+
+                    m('th', {width:"200px"}, "Tag"),
+
+	            ]),
+
+	            // Map through the retrieved tagged petitions and display them in a table
+
+	            Petition.listTagged.map(function(item) {
+
+	                return m("tr", [
+
+      	                m('td', m('label', item.properties.title)),
+
+            	        m('td', m('label', item.properties.author)),
+
+                        m('td', m('label', item.properties.date)),
+
+                        m('td', m('label', item.properties.tags)),
+
+	                ])
+
+	            })
+
+	        ])
+
+        ])
+
+    }
+
+};
+// Main application view combining various components to form the overall app layout
+
+var MainApp = {
+
+    view: function() {
+
+        return m('div', {class: 'container'}, [
+
+            // Title of the application
+
+            m("h1", {class: 'title'}, 'APPLICATION DE MINI-PETITIONS'),
+
+            
+
+            // Displaying CurrentUserView component at the top of the layout
+
+            m("div", {class: 'box'}, m(CurrentUserView)),
+
+            // Creating columns for CreatePetitionView and SignPetitionView to be displayed side by side
+
+            m('div', {class: 'columns'}, [
+
+                m('div', {class: 'column is-half'}, m('div', {class: 'box'}, m(CreatePetitionView))),
+
+                m('div', {class: 'column is-half'}, m('div', {class: 'box'}, m(SignPetitionView))),
+
+            ]),
+
+            // Creating columns for loadSignedPetitionView and TaggedPetitionView to be displayed side by side
+
+            m('div', {class: 'columns'}, [
+
+                m('div', {class: 'column is-half'}, m('div', {class: 'box'}, m(loadSignedPetitionView))),
+
+                m('div', {class: 'column is-half'}, m('div', {class: 'box'}, m(TaggedPetitionView))),
+
+
+            ]),
+
+            m("div", {class: 'box'}, m(findSignersOfPetitionView)),
+
+
+            // Displaying TopPetitionView at the bottom of the layout within a box
+
+            m('div', {class: 'box'}, m(TopPetitionView)),
+
+        ]);
+
+    }
+
+};
+// Mounting the MainApp to the document body to render the application
+
+m.mount(document.body, MainApp);
+</script>
