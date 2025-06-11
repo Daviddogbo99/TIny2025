@@ -112,7 +112,7 @@ public class PetitionEndpoint {
 
             List<Entity> result = pq.asList(FetchOptions.Builder.withLimit(2));
 
-            if (!result.isEmpty()) throw new UnauthorizedException("This Petition title already exists.");
+            if (!result.isEmpty()) throw new UnauthorizedException("Pétion déjà créée");
 
         }
 
@@ -136,13 +136,13 @@ public class PetitionEndpoint {
 
     // Method to sign a petition
 
-    @ApiMethod(name = "signPetition", httpMethod = HttpMethod.GET)
+    @ApiMethod(name = "signPetition",path = "signPetition", httpMethod = HttpMethod.GET)
 
     public Entity signPetition(@Named("user") String user, @Named("title") String title) throws UnauthorizedException {
 
         // Checking if user credentials are valid
 
-        if ((user == null) || (user.equals("null"))) throw new UnauthorizedException("Invalid credentials");
+        if ((user == null) || (user.equals("null"))) throw new UnauthorizedException("Email ou nom invalide");
 
         // Query to check if the petition exists
 
@@ -158,7 +158,7 @@ public class PetitionEndpoint {
 
         // Verifying if the petition exists
 
-        if (result.isEmpty()) throw new UnauthorizedException("This petition does not exist.");
+        if (result.isEmpty()) throw new UnauthorizedException("Cette Pétition n'existe pas");
 
         // Query to check if the user has already signed this petition
 
@@ -184,7 +184,7 @@ public class PetitionEndpoint {
 
         // Verifying if the user has already signed this petition
 
-        if (!result.isEmpty()) throw new UnauthorizedException("This user has already signed this petition.");
+        if (!result.isEmpty()) throw new UnauthorizedException("Petition déjà signée.");
 
         // Creating a new entry for the petitioner
 
@@ -264,62 +264,68 @@ public class PetitionEndpoint {
 
     }
 
-// Méthode pour récupérer les pétitions signées pour un utilisateur
-
+// MÉTHODE CORRIGÉE pour récupérer les pétitions signées par un utilisateur
 @ApiMethod(
     name = "loadSignedPetitions", 
-    httpMethod = HttpMethod.GET,
-    path="loadSignedPetitions"
+    path = "loadSignedPetitions/{user}",
+    httpMethod = HttpMethod.GET
 )
-
-public List<Entity> loadSignedPetitions(@Named("user") String user)
-
-        throws UnauthorizedException {
+public List<Entity> loadSignedPetitions(@Named("user") String user) throws UnauthorizedException {
+    System.out.println("=== Début loadSignedPetitions ===");
+    System.out.println("Utilisateur reçu : " + user);
 
     // Checking if user credentials are valid
-
-    if ((user == null) || (user.equals("null"))) 
-    throw new UnauthorizedException("Invalid credentials");
-
-    // Query to retrieve petitions signed by the user
-    DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
-
-
-    Query signedPetitionsQuery = new Query("Petitioner")
-
-            .setFilter(new FilterPredicate("petitioner", FilterOperator.EQUAL, user))
-
-            .addSort("date", SortDirection.DESCENDING);
-
-            PreparedQuery pq = datastore.prepare(signedPetitionsQuery);
-
-    List<Entity> signedPetitionsList = pq.asList(FetchOptions.Builder.withLimit(50));
-
-    List<Entity> result = new ArrayList<>();
-
-    // Retrieving details of signed petitions
-
-    for (Entity signedPetition : signedPetitionsList) {
-
-        String petitionTitle = (String) signedPetition.getProperty("petition");
-
-        // Query to retrieve petition details
-
-        Query petitionQuery = new Query("Petition")
-
-                .setFilter(new FilterPredicate("title", FilterOperator.EQUAL, petitionTitle))
-
-                .addSort("date", SortDirection.DESCENDING);
-
-        result.addAll(datastore.prepare(petitionQuery).asList(FetchOptions.Builder.withLimit(50)));
-
+    if ((user == null) || (user.equals("null")) || user.trim().isEmpty()) {
+        System.out.println("Erreur : utilisateur null ou vide");
+        throw new UnauthorizedException("Invalid credentials");
     }
 
-    return result;
+    DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
 
+    try {
+        // Query to retrieve petitions signed by the user
+        Query signedPetitionsQuery = new Query("Petitioner")
+                .setFilter(new FilterPredicate("petitioner", FilterOperator.EQUAL, user))
+                .addSort("date", SortDirection.DESCENDING);
+
+        PreparedQuery pq = datastore.prepare(signedPetitionsQuery);
+        List<Entity> signedPetitionsList = pq.asList(FetchOptions.Builder.withLimit(50));
+
+        System.out.println("Nombre de signatures trouvées : " + signedPetitionsList.size());
+
+        List<Entity> result = new ArrayList<>();
+
+        // Retrieving details of signed petitions
+        for (Entity signedPetition : signedPetitionsList) {
+            String petitionTitle = (String) signedPetition.getProperty("petition");
+            System.out.println("Traitement de la pétition : " + petitionTitle);
+
+            // Query to retrieve petition details
+            Query petitionQuery = new Query("Petition")
+                    .setFilter(new FilterPredicate("title", FilterOperator.EQUAL, petitionTitle));
+
+            PreparedQuery petitionPq = datastore.prepare(petitionQuery);
+            List<Entity> petitionDetails = petitionPq.asList(FetchOptions.Builder.withLimit(1));
+
+            if (!petitionDetails.isEmpty()) {
+                result.add(petitionDetails.get(0));
+                System.out.println("Pétition ajoutée : " + petitionTitle);
+            } else {
+                System.out.println("Pétition non trouvée : " + petitionTitle);
+            }
+        }
+
+        System.out.println("Nombre total de pétitions retournées : " + result.size());
+        System.out.println("=== Fin loadSignedPetitions ===");
+
+        return result;
+
+    } catch (Exception e) {
+        System.err.println("Erreur dans loadSignedPetitions : " + e.getMessage());
+        e.printStackTrace();
+        throw new UnauthorizedException("Erreur lors du chargement des pétitions signées");
+    }
 }
-
-
 
     // Method to delete a petition
 
@@ -375,8 +381,7 @@ public List<Entity> loadSignedPetitions(@Named("user") String user)
     return response;
     }
     
-
-// Méthode permettant d'afficher la liste des utilisateurs ayant signé une pétition donnée
+    // Méthode permettant d'afficher la liste des utilisateurs ayant signé une pétition donnée
 
 @ApiMethod(name = "findSignersOfPetition", httpMethod = HttpMethod.GET)
 public List<String> signersOfPetition(@Named("petitionTitle") String petitionTitle) {
@@ -391,5 +396,6 @@ public List<String> signersOfPetition(@Named("petitionTitle") String petitionTit
     }
     return signers;
 }
+ 
 
 }

@@ -1,878 +1,1500 @@
 <!DOCTYPE html>
-
 <html>
 
 <head>
+  <meta charset="UTF-8">
+  <title>PetitionHub - Plateforme de Pétitions</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- External CSS and JS libraries -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+  <script defer src="https://use.fontawesome.com/releases/v6.1.1/js/all.js"></script>
+  <script src="https://unpkg.com/mithril/mithril.js"></script>
+  <script src="https://unpkg.com/jwt-decode@3.0.0/build/jwt-decode.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    :root {
+      --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      --warning-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+      --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      --hover-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+      --border-radius: 15px;
+    }
 
-    <!-- Page metadata and dependencies -->
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
 
-    <meta charset="UTF-8">
+    .main-container {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: var(--border-radius);
+      box-shadow: var(--card-shadow);
+      margin: 20px;
+      padding: 0;
+      overflow: hidden;
+    }
 
-    <title>Petition</title>
+    .hero-section {
+      background: var(--primary-gradient);
+      color: white;
+      padding: 2rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
 
-    <meta charset="utf-8">
+    .hero-section::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+      animation: rotate 20s linear infinite;
+    }
 
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    @keyframes rotate {
+      0% {
+        transform: rotate(0deg);
+      }
 
-    <!-- External CSS and JS libraries -->
+      100% {
+        transform: rotate(360deg);
+      }
+    }
 
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.8.0/css/bulma.min.css">
+    .hero-title {
+      font-size: 3rem;
+      font-weight: 800;
+      margin-bottom: 1rem;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      position: relative;
+      z-index: 1;
+    }
 
-    <script defer src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"></script>
+    .hero-subtitle {
+      font-size: 1.25rem;
+      opacity: 0.9;
+      position: relative;
+      z-index: 1;
+    }
 
-    <!-- Mithril.js library for building UI components -->
+    .modern-card {
+      background: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--card-shadow);
+      padding: 2rem;
+      margin: 1rem;
+      transition: all 0.3s ease;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+    }
 
-    <script src="https://unpkg.com/mithril/mithril.js"></script>
+    .modern-card:hover {
+      transform: translateY(-5px);
+      box-shadow: var(--hover-shadow);
+    }
 
-    <!-- JWT Decode library for decoding JSON Web Tokens -->
+    .card-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid #f5f5f5;
+    }
 
-    <script src="https://unpkg.com/jwt-decode@3.0.0/build/jwt-decode.js"></script>
+    .card-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 1rem;
+      font-size: 1.5rem;
+      color: white;
+    }
 
-    <!-- Google Sign-In client script for handling user authentication -->
+    .card-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #2c3e50;
+      margin: 0;
+    }
 
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    .modern-input {
+      border: 2px solid #e1e8ed;
+      border-radius: 25px;
+      padding: 12px 20px;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      background: #f8f9fa;
+    }
 
+    .modern-input:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      background: white;
+    }
+
+    .modern-button {
+      border: none;
+      border-radius: 25px;
+      padding: 12px 30px;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-primary {
+      background: var(--primary-gradient);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: var(--secondary-gradient);
+      color: white;
+    }
+
+    .btn-success {
+      background: var(--success-gradient);
+      color: white;
+    }
+
+    .btn-warning {
+      background: var(--warning-gradient);
+      color: white;
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+      color: white;
+    }
+
+    .btn-info {
+      background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+      color: white;
+    }
+
+    .modern-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .modern-button:active {
+      transform: translateY(0);
+    }
+
+    .modern-table {
+      background: white;
+      border-radius: var(--border-radius);
+      overflow: hidden;
+      box-shadow: var(--card-shadow);
+      border: none;
+    }
+
+    .modern-table thead th {
+      background: var(--primary-gradient);
+      color: white;
+      border: none;
+      padding: 1rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .modern-table tbody tr {
+      transition: all 0.3s ease;
+    }
+
+    .modern-table tbody tr:hover {
+      background: #f8f9fa;
+      transform: scale(1.01);
+    }
+
+    .modern-table tbody td {
+      padding: 1rem;
+      border: none;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .status-badge {
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-success {
+      background: var(--success-gradient);
+      color: white;
+    }
+
+    .badge-error {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+      color: white;
+    }
+
+    .signers-badge {
+      background: linear-gradient(135deg, #FF9500 0%, #FF5722 100%);
+      color: white;
+      padding: 0.4rem 0.8rem;
+      border-radius: 15px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      box-shadow: 0 2px 8px rgba(255, 149, 0, 0.3);
+    }
+
+    .floating-action {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: var(--secondary-gradient);
+      color: white;
+      border: none;
+      box-shadow: 0 5px 25px rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+
+    .floating-action:hover {
+      transform: scale(1.1);
+    }
+
+    .tab-container {
+      background: white;
+      border-radius: var(--border-radius);
+      overflow: hidden;
+      box-shadow: var(--card-shadow);
+      margin: 1rem;
+    }
+
+    .tab-nav {
+      display: flex;
+      background: #f8f9fa;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    .tab-button {
+      flex: 1;
+      padding: 1rem 2rem;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .tab-button.active {
+      background: white;
+      color: #667eea;
+    }
+
+    .tab-button.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 50px;
+      height: 3px;
+      background: var(--primary-gradient);
+      border-radius: 2px;
+    }
+
+    .tab-content {
+      padding: 2rem;
+    }
+
+    .notification {
+      border-radius: var(--border-radius);
+      padding: 1rem 1.5rem;
+      margin: 1rem 0;
+      border: none;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+      padding: 2rem;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .action-buttons .modern-button {
+      padding: 0.4rem 0.8rem;
+      font-size: 0.8rem;
+      margin: 0.1rem;
+    }
+
+    /* Style pour l'impression */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+
+      .print-content,
+      .print-content * {
+        visibility: visible;
+      }
+
+      .print-content {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: white;
+        color: black;
+      }
+
+      .no-print {
+        display: none !important;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .hero-title {
+        font-size: 2rem;
+      }
+
+      .grid-container {
+        grid-template-columns: 1fr;
+        padding: 1rem;
+      }
+
+      .modern-card {
+        margin: 0.5rem;
+        padding: 1.5rem;
+      }
+
+      .action-buttons {
+        flex-direction: column;
+      }
+    }
+
+    .pulse-animation {
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.05);
+      }
+
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    .slide-in {
+      animation: slideIn 0.5s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
 </head>
 
 <body>
-
-<script>	
-
-var Petition = {
-
-    userMail: null,
-
-    listTop: [],
-
-    listUser: [],
-
-    listTagged: [],
-
-    signers: [], // Array to store signers of the specified petition       
-
-    // Method to create a new petition
-
-    create: function(user, title, tag) {  
-
-        m.request({
-
-            method: "GET",
-
-            url: "_ah/api/petitionApi/v1/createPetition/"+user+"/"+title+"/"+tag           
-
-        })
-
-        .then(function(result) {
-
-            console.log("Petition créée:", result);
-
-            Petition.loadTopPetitions();
-
-        })
-
-        .catch(function(error) {
-
-            console.error("Erreur lors de la création de la pétition:", error.toString());
-
-            CreatePetitionView.error = "Erreur : impossible de créer une pétition, vérifiez que vous êtes authentifié et que le tag est défini.";            
-
-        });
-
-    },
-
-    // Method to delete a petition
-
-        deletePetition: function(title,author) {
-
-
-    if (Petition.userMail === author) {
-
-    if (!confirm("Voulez-vous vraiment supprimer cette pétition ?")) {
-    return;
-    }  
-
-    m.request({
-
-    method: "DELETE",
-
-    url: "_ah/api/petitionApi/v1/deletePetition/" + encodeURIComponent(title) + "/" + encodeURIComponent(Petition.userMail)
-
-    })
-
-    .then(function(result) {
-    console.log("Résultat de la suppression:", result);
-
-    // Supprimer localement la pétition du tableau
-    if (Array.isArray(Petition.topPetitions)) {
-    Petition.topPetitions = Petition.topPetitions.filter(function(item) {
-        return item.properties.title !== title || item.properties.author !== author;
-    });
-    }
-    // Interface sans rechargement 
-    m.redraw();
-
-    alert("Suppression effectuée avec succès, rafraîchissez la page pour la voir.");
-
-    })  
-    .catch(function(error) {
-
-    alert("Erreur lors de la suppression de la pétition:" + (error.message || JSON.stringify(error)));
-
-    });
-
-    } else {
-    alert("Vous n'êtes pas autorisé à supprimer cette pétition.Soyez conneté pour supprimer votre pétiton");
-    }
-
-    },
-    // Méthode pour trouver les utilisateurs ayant signé une pétition donnée
-      // Function to find signers of a petition
-
-      findSignersOfPetition: function(petitionTitle) {
-        // Reset signers array
-        Petition.signers = [];
-        // Make request to backend to get signers of the specified petition
-        m.request({
-            method: "GET",
-            url: "_ah/api/petitionApi/v1/findSignersOfPetition/" + petitionTitle
-        })
-        .then(function(result) {
-            // Update signers array with the retrieved signers
-            Petition.signers = result.items;
-        })
-        .catch(function(error) {
-            console.error("Erreur lors de la recherche des signataires de la pétition:", error.toString());
-            findSignersOfPetitionView.error = "Erreur : impossible de trouver les signataires de la pétition.";
-        });
-    },
-    // Method to sign a petition
-
-    sign: function(user, title) {
-
-        m.request({
-
-            method: "GET",
-
-            url: "_ah/api/petitionApi/v1/signPetition/"+user+"/"+title
-
-        })
-        .then(function(result) {
-
-            console.log("Petition signed:", result);
-
-        })
-
-        .catch(function(error) {
-
-            console.error("Error signing petition:", error.toString());  
-
-            SignPetitionView.error = "Erreur : impossible de signer cette pétition, vérifiez que vous êtes authentifié et que la pétition existe. Vous avez peut-être déjà signé cette pétition.";   
-
-        });
-
-    },
-    // Method to load top petitions
-
-    loadTopPetitions: function() {
-
-        m.request({
-
-            method: "GET",
-
-            url: "_ah/api/petitionApi/v1/topPetitions/"
-
-        })
-
-        .then(function(result) {
-
-            console.log("got:", result.items);
-
-            Petition.listTop = result.items;
-
-        })
-
-        .catch(function(error) {
-
-            console.error("Error loading top petitions:", error.toString());            
-
-        });
-
-    },
-
-    // Method to load signed petitions for a user
-
-    loadSignedPetitions: function(user) {
-        if (!user) {
-        loadSignedPetitionView.error = "Veuillez entrer un email valide.";
-        return;
-        }
-        
-
-        m.request({
-
-            method: "GET",
-
-            url: "_ah/api/petitionApi/v1/loadSignedPetitions/"+ encodeURIComponent(user)
-
-        })
-
-        .then(function(result) {
-
-            console.log("got:", result.items);
-
-            Petition.listUser = result.items;
-
-        })
-
-        .catch(function(error) {
-
-            console.error("Error loading user petitions:", error.toString());       
-
-            loadSignedPetitionView.error = "Erreur : impossible de récupérer les pétitions signées, vérifiez que cet utilisateur existe.";   
-
-        });
-
-    },
-    // Method to load tagged petitions
-    loadTaggedPetitions: function(tag) {
-
-        m.request({
-
-            method: "GET",
-
-            url: "_ah/api/petitionApi/v1/taggedPetitions/"+tag
-
-        })
-
-        .then(function(result) {
-
-            console.log("got:", result.items);
-
-            Petition.listTagged = result.items;
-
-        })
-
-        .catch(function(error) {
-
-            console.error("Error loading tagged petitions:", error.toString());            
-
-        });
-
-    }
-
-};
-
-// Function to handle the Google Sign-In credential response
-
-function handleCredentialResponse(response) {
-
-    console.log("callback called:"+response.credential);
-
-    const responsePayload = jwt_decode(response.credential);
-
-    console.log('Email: ' + responsePayload.email); 
-
-    console.log('Name: ' + responsePayload.name);
-
-    if(responsePayload.email) Petition.userMail = responsePayload.email;
-
-    else Petition.userMail = responsePayload.name;
-
-    m.redraw();
-}
-
-// View component for displaying the current user information
-
-var CurrentUserView = {
-
-    userMail: null,
-
-    view: function() {
-
-        return m('div', [
-
-            m('div',{class:'subtitle'},"Utilisateur Courant"),
-
-            // Display current user email if available
-
-            Petition.userMail ? m('label', { class: 'label' }, "Utilisateur Courant: " + Petition.userMail) 
-
-                : null,           
-
-            m('label',{class:'label'}, "entrez votre nom :"),
-
-            // Input field for entering an email
-
-            m("input[type=text][placeholder=nom]", {
-
-                value: CurrentUserView.userMail,
-
-                class: 'input is-rounded',
-
-                oninput: function (e) {
-
-                    CurrentUserView.userMail=e.target.value;
-
-                },
-
-            }),
-
-            m('label',{class:'label'}, ""),
-
-            // Button to set the current user email
-
-            m('button',{
-
-                class: 'button is-link',
-
-                onclick: function(e) {
-
-                    Petition.userMail=CurrentUserView.userMail;
-
-                }
-
-            },"ok"),
-
-            m('label',{class:'label'}, ""),
-
-            m('label',{class:'label'}, "ou utiliser votre compte Google :"),    
-
-            // Google Sign-In button
-
-            m('div', [
-
-                m('div', {
-
-                    id: 'g_id_onload',
-
-                    'data-client_id': '315689940834-7th4d5r8t5g37girtgvs157038o9d0im.apps.googleusercontent.com',
-
-                    'data-callback': 'handleCredentialResponse',
-
-                }),
-
-                m('div', { class: 'g_id_signin', 'data-type': 'standard' }),
-
-            ]),
-
-        ]);
-
-    }    
-
-};
-// Object for handling the view and functionality related to creating petitions
-
-var CreatePetitionView = {
-
-    title: "",
-
-    tag: "",
-
-    error: "",
-
-    created: false,
-
-    // View function defining the UI elements for creating a petition
-
-    view: function() {
-
-        return m('div', [
-
-            m('div',{class:'subtitle'},"Créer une Pétition"),
-
-            // Input field for entering a petition title
-
-            m('label',{class:'label'}, "entrer le titre de la pétition :"),            
-
-            m("input[type=text][placeholder=titre]", {
-
-                value: CreatePetitionView.title,
-
-                class: 'input is-rounded',
-
-                // Updates the title value when the input changes
-
-                oninput: function (e) {
-
-                    CreatePetitionView.title=e.target.value;
-
-                    CreatePetitionView.created = false;
-
-                },
-
-            }),
-
-            m('label',{class:'label'}, ""),
-
-            // Input field for entering tags
-
-            m('label',{class:'label'}, "entrer le tag :"),
-
-            m("input[type=text][placeholder=tag1, tag2]", {
-
-                value: CreatePetitionView.tag,
-
-                class: 'input is-rounded',
-
-                // Updates the tag value when the input changes
-
-                oninput: function (e) {
-
-                    CreatePetitionView.tag=e.target.value;
-                    CreatePetitionView.created = false;
-
-                },
-
-            }),
-
-            m('label',{class:'label'}, ""),
-
-            // Button to create a petition; triggers the 'Petition.create' method
-
-            m('button',{
-
-                class: 'button is-link',
-
-                onclick: function(e) {
-
-                    CreatePetitionView.error="";
-
-                    CreatePetitionView.created = true;
-
-                    // Calls the 'Petition.create' method with provided parameters
-
-                    Petition.create(Petition.userMail, CreatePetitionView.title, CreatePetitionView.tag);
-
-                }
-
-            },"créer"),
-
-            // Conditional rendering based on petition creation status or error
-
-            CreatePetitionView.error ? m('label', {class: 'label', style: 'color: red;' }, CreatePetitionView.error)
-
-                : CreatePetitionView.created ? m('label',{class:'label'}, "Vous avez créer la pétition : "+CreatePetitionView.title+" ; tags : "+CreatePetitionView.tag)
-
-                : null,
-
-        ])
-
-    },
-
-};
-
-// Object for handling the view and functionality related to signing petitions
-
-var SignPetitionView = {
-
-    title: "",
-
-    error: "",
-
-    signed: false,
-
-    // View function defining the UI elements for signing a petition
-
-    view: function() {
-
-        return m('div', [
-
-            m('div', { class: 'subtitle' }, "Signer une Pétition"),
-
-            // Input field for entering a petition title to sign
-
-            m('label',{class:'label'}, "entrer le titre de la pétition :"),  
-
-            m("input[type=text][placeholder=titre]", {
-
-                value: SignPetitionView.title,
-
-                class: 'input is-rounded',
-
-                // Updates the title value when the input changes
-
-                oninput: function (e) {
-
-                    SignPetitionView.error="";
-
-                    SignPetitionView.title = e.target.value;
-
-                    SignPetitionView.signed = false;
-
-                },
-
-            }),
-
-            m('label',{class:'label'}, ""),
-
-            // Button to sign a petition; triggers the 'Petition.sign' method
-
-            m('button', {
-
-                class: 'button is-link',
-
-                onclick: function (e) {
-
-                    SignPetitionView.signed = true;
-
-                    // Calls the 'Petition.sign' method with provided parameters
-
-                    Petition.sign(Petition.userMail, SignPetitionView.title);
-
-                } 
-
-            }, "signer"),
-
-            // Conditional rendering based on signing status or error
-
-            SignPetitionView.error ? m('label', {class: 'label', style: 'color: red;' }, SignPetitionView.error)
-
-                : SignPetitionView.signed ? m('label',{class:'label'}, "Vous avez signé la Pétition : "+SignPetitionView.title) 
-
-                : null,
-
-        ])
-
-    }
-
-};
-// View component for displaying the top petitions
-
-var TopPetitionView = {
-
-    oninit: Petition.loadTopPetitions,
-
-    view: function() {
-
-        return m('div', [
-
-            m('div',{class:'subtitle'},"Top Petitions"),
-
-            m('table', {class:'table is-striped'},[
-
-                m('tr', [
-
-                    m('th', {width:"400px"}, "Titre"),
-
-                    m('th', {width:"300px"}, "Auteur"),
-
-                    m('th', {width:"200px"}, "Date"),
-
-                    m('th', {width:"300px"}, "Tag"),
-
-                ]),
-
-                // Map through top petitions and display them in a table
-
-                Petition.listTop.map(function(item) {
-
-                    return m("tr", [
-
-                        m('td', m('label', item.properties.title)),
-
-                        m('td', m('label', item.properties.author)),
-
-                        m('td', m('label', item.properties.date)),
-
-                        m('td', m('label', item.properties.tags)),
-
-                        m('td', m('button', { onclick: function() { Petition.deletePetition(item.properties.title,item.properties.author); } }, "Supprimer")),
-
-                    ])
-
-                })
-
-            ])
-
-        ]);
-
-    },
-
-};
-
-// View component for displaying signed petitions by a user
-
-var loadSignedPetitionView = {
-
-    user: "",
-
-    error: "",
-
-    view: function() {
-
-        return m('div', [
-
-            m('div',{class:'subtitle'},"Pétitions signées par un utilisateur"),
-
-            
-
-            m('label',{class:'label'}, "entrer le mail de l'utilisateur :"),
-
-            m("input[type=text][placeholder=email]", {
-
-                value: loadSignedPetitionView.user,
-
-                class: 'input is-rounded',
-
-                 oninput: function (e) {
-
-                    loadSignedPetitionView.error = "";
-
-                    loadSignedPetitionView.user=e.target.value},
-
-                 }),
-
-            m('label',{class:'label'}, ""),
-
-            // Button to load signed petitions for a user
-
-            m('button',{
-
-                class: 'button is-link',
-                onclick: function(e) {
-                      if (!loadSignedPetitionView.user || loadSignedPetitionView.user.trim() === "") {
-                          loadSignedPetitionView.error = "Veuillez entrer un email valide.";
-                          return;
-                      }
-                     Petition.loadSignedPetitions(loadSignedPetitionView.user.trim());
-                }
-            },"chercher"),
-
-            // Display signed petitions in a table
-
-            m('table', {class:'table is-striped'},[
-
-                m('tr', [
-
-                    m('th', {width:"200px"}, "Titre"),
-
-                    m('th', {width:"200px"}, "Auteur"),
-
-                    m('th', {width:"200px"}, "Date"),
-
-                    m('th', {width:"200px"}, "Tag"),
-
-                ]),
-
-                // Map through signed petitions and display them in a table
-
-                Petition.listUser.map(function(item) {
-
-                    return m("tr", [
-
-                        m('td', m('label', item.properties.title)),
-
-                        m('td', m('label', item.properties.author)),
-
-                        m('td', m('label', item.properties.date)),
-
-                        m('td', m('label', item.properties.tags)),
-
-                    ])
-
-                })
-
-            ]),
-
-            // Display error message if there is an issue loading signed petitions
-
-            loadSignedPetitionView.error ? m('label', {class: 'label', style: 'color: red;' }, loadSignedPetitionView.error) : null,
-
-        ]);
-
-    },
-
-};
-
-// View component pour afficher la liste des personnes ayant signé une pétition 
-
-// View component for finding signers of a petition
-
-    var findSignersOfPetitionView = {
-
-        petitionTitle: "",
-
-        error: "",
-    
-    // Vue pour rechercher les signataires d'une pétition
-        view: function() {
-            return m('div', [
-                m('div', {class:'subtitle'}, "Chercher les Signataires de la Pétition"),
-                m('label', {class:'label'}, "Entrer le titre de la pétition:"),
-                m("input[type=text][placeholder=titre de la pétition]", {
-                    value: findSignersOfPetitionView.petitionTitle,
-                    class: 'input is-rounded',
-                    oninput: function (e) {
-                        findSignersOfPetitionView.error = "";
-                        findSignersOfPetitionView.petitionTitle = e.target.value;
-                    },
-                }),
-                m('label', {class:'label'}, ""),
-            // Button to find signers of the specified petition
-                m('button', {
-                    class: 'button is-link',
-                    onclick: function(e) {
-                        Petition.findSignersOfPetition(findSignersOfPetitionView.petitionTitle);
-                    }
-                }, "chercher"),
-            // Display signers in a table
-                m('table', {class:'table is-striped'}, [
-                    m('tr', [
-                        m('th', {width:"200px"}, "Utilisateurs ayant signé la Pétition"),
-                    // Add other table headers as needed
-                    ]),
-                // Map through signers and display them in a table
-                    Petition.signers.map(function(signer) {
-                        return m("tr", [
-                            m('td', m('label', signer.user)),
-                            // Add other table cells as needed
-                        ]);
-                    })
-                ]),
-            // Display error message if there is an issue finding signers
-                findSignersOfPetitionView.error ? m('label', {class: 'label', style: 'color: red;' }, findSignersOfPetitionView.error) : null,
-            ]);
-        }
+  <script>
+    // État global de l'application
+    var AppState = {
+      currentTab: 'dashboard',
+      isLoading: false,
+      notifications: []
     };
 
-// View component for displaying tagged petitions based on a specific tag
+    // Système de notifications
+    var NotificationSystem = {
+      show: function (message, type = 'info', duration = 5000) {
+        var notification = {
+          id: Date.now(),
+          message: message,
+          type: type,
+          timestamp: Date.now()
+        };
+        AppState.notifications.push(notification);
+        m.redraw();
+        setTimeout(function () {
+          AppState.notifications = AppState.notifications.filter(n => n.id !== notification.id);
+          m.redraw();
+        }, duration);
+      }
+    };
 
-var TaggedPetitionView = {
+    // Modèle Petition amélioré
+    var Petition = {
+      userMail: null,
+      listTop: [],
+      listUser: [],
+      listTagged: [],
+      signers: [],
+      petitionSignersCount: {},
+      signersLoading: {},
+      petitionSignersDetails: {},
 
-    tag: "",
+      // Méthode pour récupérer les signataires avec leurs détails
+      getSignersDetails: function (petitionTitle) {
+        if (this.petitionSignersDetails[petitionTitle]) {
+          return Promise.resolve(this.petitionSignersDetails[petitionTitle]);
+        }
 
-    view: function() {
+        return m.request({
+          method: "GET",
+          url: "/_ah/api/petitionApi/v1/signersOfPetition/" + encodeURIComponent(petitionTitle)
+        })
+          .then(function (result) {
+            var signers = [];
+            if (result && result.items && Array.isArray(result.items)) {
+              signers = result.items;
+            } else if (Array.isArray(result)) {
+              signers = result;
+            }
+            Petition.petitionSignersDetails[petitionTitle] = signers;
+            return signers;
+          })
+          .catch(function (error) {
+            console.error("Erreur lors de la récupération des signataires détaillés:", error);
+            return [];
+          });
+      },
 
-        return m('div', [
+      // Méthode pour imprimer la liste des signataires
+      printSigners: function (petitionTitle) {
+        Petition.getSignersDetails(petitionTitle)
+          .then(function (signers) {
+            var printContent = `
+<div class="print-content">
+<h1>Liste des Signataires</h1>
+<h2>Pétition: "${petitionTitle}"</h2>
+<p><strong>Nombre total de signataires:</strong> ${signers.length}</p>
+<p><strong>Date d'impression:</strong> ${new Date().toLocaleDateString('fr-FR')}</p>
+<hr>
+<h3>Liste des signataires:</h3>
+<ol>
+${signers.map(function (signer, index) {
+              return `<li style="margin: 5px 0;">${signer}</li>`;
+            }).join('')}
+</ol>
+<hr>
+<p style="font-size: 0.9em; color: #666;">
+Document généré par PetitionHub - ${new Date().toLocaleString('fr-FR')}
+</p>
+</div>
+`;
 
-            // Display the subtitle for the section
+            // Créer une nouvelle fenêtre pour l'impression
+            var printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+<!DOCTYPE html>
+<html>
+<head>
+<title>Signataires - ${petitionTitle}</title>
+<style>
+body { font-family: Arial, sans-serif; margin: 20px; }
+h1 { color: #667eea; border-bottom: 2px solid #667eea; padding-bottom: 10px; }
+h2 { color: #333; }
+h3 { color: #555; margin-top: 30px; }
+ol { line-height: 1.6; }
+li { margin: 5px 0; }
+hr { border: 1px solid #eee; margin: 20px 0; }
+</style>
+</head>
+<body>
+${printContent}
+</body>
+</html>
+`);
+            printWindow.document.close();
+            printWindow.print();
+          })
+          .catch(function (error) {
+            NotificationSystem.show("Erreur lors de la récupération des signataires pour l'impression", "error");
+          });
+      },
 
-			m('div',{class:'subtitle'},"Tagged Petitions"),
+      // Méthode pour trier les pétitions par nombre de signataires
+      sortPetitionsBySignatures: function () {
+        if (!Petition.listTop || Petition.listTop.length === 0) {
+          return Promise.resolve();
+        }
 
-            // Input field for entering a tag
+        // Récupérer le nombre de signataires pour toutes les pétitions
+        var promises = Petition.listTop.map(function (petition) {
+          return Petition.getSignersCount(petition.properties.title)
+            .then(function (count) {
+              petition.signersCount = count;
+              return petition;
+            });
+        });
 
-			m('label',{class:'label'}, "entrer un tag :"),
+        return Promise.all(promises)
+          .then(function (petitionsWithCounts) {
+            // Trier par nombre de signataires (décroissant)
+            Petition.listTop = petitionsWithCounts.sort(function (a, b) {
+              return (b.signersCount || 0) - (a.signersCount || 0);
+            });
+            m.redraw();
+          });
+      },
 
-			m("input[type=text][placeholder=tag]", {
+      // Méthode corrigée pour récupérer le nombre de signataires
+      getSignersCount: function (petitionTitle) {
+        // Si déjà en cache, retourner immédiatement
+        if (this.petitionSignersCount[petitionTitle] !== undefined) {
+          return Promise.resolve(this.petitionSignersCount[petitionTitle]);
+        }
 
-				value: TaggedPetitionView.tag,
+        // Si déjà en cours de chargement, attendre
+        if (this.signersLoading[petitionTitle]) {
+          return this.signersLoading[petitionTitle];
+        }
 
-				class: 'input is-rounded',
+        console.log("Récupération des signataires pour:", petitionTitle);
 
-				 oninput: function (e) {
+        // Marquer comme en cours de chargement
+        this.signersLoading[petitionTitle] = m.request({
+          method: "GET",
+          url: "/_ah/api/petitionApi/v1/signersOfPetition/" + encodeURIComponent(petitionTitle)
+        })
+          .then(function (result) {
+            console.log("Résultat pour", petitionTitle, ":", result);
+            // Gérer la structure de réponse {items: Array}
+            var count = 0;
+            if (result && result.items && Array.isArray(result.items)) {
+              count = result.items.length;
+            } else if (Array.isArray(result)) {
+              count = result.length;
+            }
+            Petition.petitionSignersCount[petitionTitle] = count;
+            delete Petition.signersLoading[petitionTitle];
+            return count;
+          })
+          .catch(function (error) {
+            console.error("Erreur lors de la récupération du nombre de signataires pour", petitionTitle, ":", error);
+            Petition.petitionSignersCount[petitionTitle] = 0;
+            delete Petition.signersLoading[petitionTitle];
+            return 0;
+          });
 
-					TaggedPetitionView.tag=e.target.value},
+        return this.signersLoading[petitionTitle];
+      },
 
-    		}),
-            m('label',{class:'label'}, ""),
+      create: function (user, title, tag) {
+        if (!user || !title || !tag) {
+          NotificationSystem.show("Veuillez remplir tous les champs", "error");
+          return;
+        }
+        AppState.isLoading = true;
+        m.redraw();
+        m.request({
+          method: "GET",
+          url: "_ah/api/petitionApi/v1/createPetition/" + encodeURIComponent(user) + "/" + encodeURIComponent(title) + "/" + encodeURIComponent(tag)
+        })
+          .then(function (result) {
+            NotificationSystem.show("Pétition créée avec succès!", "success");
+            Petition.loadTopPetitions();
+            CreatePetitionView.title = "";
+            CreatePetitionView.tag = "";
+          })
+          .catch(function (error) {
+            let message = "Erreur inconnue lors de la création";
+            if (error.message && error.message.includes("Pétition déjà créée")) {
+              message = "Une pétition avec ce titre existe déjà.";
+            } else if (error.message && error.message.includes("Invalid credentials")) {
+              message = "Veuillez remplir tous les champs.";
+            }
+            NotificationSystem.show(message, "error");
+          })
+          .finally(function () {
+            AppState.isLoading = false;
+            m.redraw();
+          });
+      },
 
-			// Button to initiate the retrieval of tagged petitions
+      sign: function (user, title) {
+        if (!user || !title) {
+          NotificationSystem.show("Veuillez vous authentifier et spécifier un titre", "error");
+          return;
+        }
+        AppState.isLoading = true;
+        m.redraw();
+        m.request({
+          method: "GET",
+          url: "_ah/api/petitionApi/v1/signPetition",
+          params: {
+            user: user,
+            title: title
+          }
+        })
+          .then(function (result) {
+            NotificationSystem.show("Pétition signée avec succès!", "success");
+            SignPetitionView.title = "";
+            delete Petition.petitionSignersCount[title];
+            delete Petition.signersLoading[title];
+            delete Petition.petitionSignersDetails[title];
+            Petition.loadTopPetitions();
+          })
+          .catch(function (error) {
+            let message = "Erreur inconnue lors de la signature";
+            if (error.message && error.message.includes("déjà signée")) {
+              message = "Vous avez déjà signé cette pétition.";
+            } else if (error.message && error.message.includes("n'existe pas.")) {
+              message = "Cette pétition n'existe pas.";
+            } else if (error.message && error.message.includes("Email invalide")) {
+              message = "Veuillez vous authentifier.";
+            }
+            NotificationSystem.show(message, "error");
+          })
+          .finally(function () {
+            AppState.isLoading = false;
+            m.redraw();
+          });
+      },
 
-			m('button',{
+      loadTopPetitions: function () {
+        AppState.isLoading = true;
+        m.redraw();
+        m.request({
+          method: "GET",
+          url: "_ah/api/petitionApi/v1/topPetitions/"
+        })
+          .then(function (result) {
+            Petition.listTop = result.items || [];
+            // Après avoir chargé les pétitions, les trier par nombre de signataires
+            return Petition.sortPetitionsBySignatures();
+          })
+          .catch(function (error) {
+            NotificationSystem.show("Erreur lors du chargement des pétitions", "error");
+          })
+          .finally(function () {
+            AppState.isLoading = false;
+            m.redraw();
+          });
+      },
 
-				class: 'button is-link',
+      // Dans la méthode loadSignedPetitions, remplacez par :
+      loadSignedPetitions: function (user) {
+        if (!user) {
+          NotificationSystem.show("Veuillez entrer un email valide", "error");
+          return;
+        }
+        AppState.isLoading = true;
+        m.redraw();
 
-				onclick: function(e) {
+        console.log("Chargement des pétitions signées pour:", user);
 
-                    Petition.loadTaggedPetitions(TaggedPetitionView.tag)
+        m.request({
+          method: "GET",
+          url: "/_ah/api/petitionApi/v1/loadSignedPetitions/" + encodeURIComponent(user)
+        })
+          .then(function (result) {
+            console.log("Succès:", result);
+            Petition.listUser = result || []; // Pas de .items car on retourne directement la liste
+            NotificationSystem.show("Pétitions chargées avec succès (" + Petition.listUser.length + ")", "success");
+          })
+          .catch(function (error) {
+            console.error("Erreur:", error);
+            NotificationSystem.show("Erreur lors du chargement des pétitions signées", "error");
+            Petition.listUser = [];
+          })
+          .finally(function () {
+            AppState.isLoading = false;
+            m.redraw();
+          });
+      },
 
+      loadTaggedPetitions: function (tag) {
+        if (!tag) {
+          NotificationSystem.show("Veuillez entrer un tag", "error");
+          return;
+        }
+        AppState.isLoading = true;
+        m.redraw();
+        m.request({
+          method: "GET",
+          url: "_ah/api/petitionApi/v1/taggedPetitions/" + encodeURIComponent(tag)
+        })
+          .then(function (result) {
+            Petition.listTagged = result.items || [];
+            NotificationSystem.show("Pétitions trouvées: " + (result.items ? result.items.length : 0), "success");
+          })
+          .catch(function (error) {
+            NotificationSystem.show("Erreur lors de la recherche", "error");
+          })
+          .finally(function () {
+            AppState.isLoading = false;
+            m.redraw();
+          });
+      },
+
+      findSignersOfPetition: function (petitionTitle) {
+        if (!petitionTitle) {
+          NotificationSystem.show("Veuillez entrer un titre de pétition", "error");
+          return;
+        }
+        AppState.isLoading = true;
+        m.redraw();
+        m.request({
+          method: "GET",
+          url: "_ah/api/petitionApi/v1/signersOfPetition/" + encodeURIComponent(petitionTitle)
+        })
+          .then(function (result) {
+            // Gérer la structure de réponse {items: Array}
+            if (result && result.items && Array.isArray(result.items)) {
+              Petition.signers = result.items;
+            } else if (Array.isArray(result)) {
+              Petition.signers = result;
+            } else {
+              Petition.signers = [];
+            }
+            NotificationSystem.show("Signataires trouvés: " + Petition.signers.length, "success");
+          })
+          .catch(function (error) {
+            NotificationSystem.show("Erreur lors de la recherche des signataires", "error");
+          })
+          .finally(function () {
+            AppState.isLoading = false;
+            m.redraw();
+          });
+      },
+
+      deletePetition: function (title, author) {
+        if (Petition.userMail !== author) {
+          NotificationSystem.show("Vous n'êtes pas autorisé à supprimer cette pétition", "error");
+          return;
+        }
+        if (!confirm("Voulez-vous vraiment supprimer cette pétition ?")) {
+          return;
+        }
+        AppState.isLoading = true;
+        m.redraw();
+        m.request({
+          method: "DELETE",
+          url: "_ah/api/petitionApi/v1/deletePetition/" + encodeURIComponent(title) + "/" + encodeURIComponent(Petition.userMail)
+        })
+          .then(function (result) {
+            NotificationSystem.show("Pétition supprimée avec succès", "success");
+            delete Petition.petitionSignersCount[title];
+            delete Petition.signersLoading[title];
+            delete Petition.petitionSignersDetails[title];
+            Petition.loadTopPetitions();
+          })
+          .catch(function (error) {
+            NotificationSystem.show("Erreur lors de la suppression", "error");
+          })
+          .finally(function () {
+            AppState.isLoading = false;
+            m.redraw();
+          });
+      }
+    };
+
+    // Fonction pour gérer l'authentification Google
+    function handleCredentialResponse(response) {
+      const responsePayload = jwt_decode(response.credential);
+      Petition.userMail = responsePayload.email || responsePayload.name;
+      NotificationSystem.show("Connexion réussie: " + Petition.userMail, "success");
+      m.redraw();
+    }
+
+    // Composant de notifications
+    var NotificationComponent = {
+      view: function () {
+        return m('div', {
+          style: 'position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 400px;'
+        },
+          AppState.notifications.map(function (notification) {
+            return m('div', {
+              key: notification.id,
+              class: 'notification is-' + (notification.type === 'error' ? 'danger' : notification.type) + ' slide-in',
+              style: 'margin-bottom: 10px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.2);'
+            }, [
+              m('button', {
+                class: 'delete',
+                onclick: function () {
+                  AppState.notifications = AppState.notifications.filter(n => n.id !== notification.id);
                 }
+              }),
+              notification.message
+            ]);
+          }));
+      }
+    };
 
-            },"chercher"),
-
-	        // Display a table to present the tagged petitions retrieved
-
-	        m('table', {class:'table is-striped'},[
-
-    	        m('tr', [
-
-                    m('th', {width:"200px"}, "Titre"),
-
-                    m('th', {width:"200px"}, "Auteur"),
-
-                    m('th', {width:"200px"}, "Date"),
-
-                    m('th', {width:"200px"}, "Tag"),
-
-	            ]),
-
-	            // Map through the retrieved tagged petitions and display them in a table
-
-	            Petition.listTagged.map(function(item) {
-
-	                return m("tr", [
-
-      	                m('td', m('label', item.properties.title)),
-
-            	        m('td', m('label', item.properties.author)),
-
-                        m('td', m('label', item.properties.date)),
-
-                        m('td', m('label', item.properties.tags)),
-
-	                ])
-
-	            })
-
-	        ])
-
-        ])
-
-    }
-
-};
-// Main application view combining various components to form the overall app layout
-
-var MainApp = {
-
-    view: function() {
-
-        return m('div', {class: 'container'}, [
-
-            // Title of the application
-
-            m("h1", {class: 'title'}, 'APPLICATION DE MINI-PETITIONS'),
-
-            
-
-            // Displaying CurrentUserView component at the top of the layout
-
-            m("div", {class: 'box'}, m(CurrentUserView)),
-
-            // Creating columns for CreatePetitionView and SignPetitionView to be displayed side by side
-
-            m('div', {class: 'columns'}, [
-
-                m('div', {class: 'column is-half'}, m('div', {class: 'box'}, m(CreatePetitionView))),
-
-                m('div', {class: 'column is-half'}, m('div', {class: 'box'}, m(SignPetitionView))),
-
-            ]),
-
-            // Creating columns for loadSignedPetitionView and TaggedPetitionView to be displayed side by side
-
-            m('div', {class: 'columns'}, [
-
-                m('div', {class: 'column is-half'}, m('div', {class: 'box'}, m(loadSignedPetitionView))),
-
-                m('div', {class: 'column is-half'}, m('div', {class: 'box'}, m(TaggedPetitionView))),
-
-
-            ]),
-
-            m("div", {class: 'box'}, m(findSignersOfPetitionView)),
-
-
-            // Displaying TopPetitionView at the bottom of the layout within a box
-
-            m('div', {class: 'box'}, m(TopPetitionView)),
-
+    // Composant utilisateur moderne
+    var CurrentUserView = {
+      userMail: null,
+      view: function () {
+        return m('div', { class: 'modern-card' }, [
+          m('div', { class: 'card-header' }, [
+            m('div', {
+              class: 'card-icon',
+              style: 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);'
+            }, m('i', { class: 'fas fa-user' })),
+            m('h3', { class: 'card-title' }, 'Authentification')
+          ]),
+          Petition.userMail ?
+            m('div', { class: 'has-text-centered' }, [
+              m('div', { class: 'status-badge badge-success' }, 'Connecté'),
+              m('p', { style: 'margin: 1rem 0; font-size: 1.1rem; font-weight: 600;' },
+                'Bienvenue, ' + Petition.userMail),
+              m('button', {
+                class: 'modern-button btn-secondary',
+                onclick: function () {
+                  Petition.userMail = null;
+                  NotificationSystem.show("Déconnexion réussie", "success");
+                }
+              }, 'Se déconnecter')
+            ]) :
+            [
+              m('div', { class: 'field' }, [
+                m('label', { class: 'label' }, 'Nom d\'utilisateur'),
+                m('input', {
+                  class: 'input modern-input',
+                  type: 'text',
+                  placeholder: 'Entrez votre nom',
+                  value: CurrentUserView.userMail || '',
+                  oninput: function (e) {
+                    CurrentUserView.userMail = e.target.value;
+                  }
+                })
+              ]),
+              m('div', { class: 'field' }, [
+                m('button', {
+                  class: 'modern-button btn-primary',
+                  style: 'width: 100%; margin-bottom: 1rem;',
+                  onclick: function () {
+                    if (CurrentUserView.userMail) {
+                      Petition.userMail = CurrentUserView.userMail;
+                      NotificationSystem.show("Connexion réussie", "success");
+                    } else {
+                      NotificationSystem.show("Veuillez entrer un nom", "error");
+                    }
+                  }
+                }, 'Se connecter')
+              ]),
+              m('div', { class: 'has-text-centered' }, [
+                m('p', { style: 'margin-bottom: 1rem; color: #666;' }, 'ou'),
+                m('div', {
+                  id: 'g_id_onload',
+                  'data-client_id': '315689940834-7th4d5r8t5g37girtgvs157038o9d0im.apps.googleusercontent.com',
+                  'data-callback': 'handleCredentialResponse'
+                }),
+                m('div', { class: 'g_id_signin', 'data-type': 'standard' })
+              ])
+            ]
         ]);
+      }
+    };
 
-    }
+    // Composant de création de pétition
+    var CreatePetitionView = {
+      title: "",
+      tag: "",
+      errorMessage: "",
+      successMessage: "",
 
-};
-// Mounting the MainApp to the document body to render the application
+      view: function () {
+        return m('div', { class: 'modern-card' }, [
+          m('div', { class: 'card-header' }, [
+            m('div', {
+              class: 'card-icon',
+              style: 'background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);'
+            }, m('i', { class: 'fas fa-plus-circle' })),
+            m('h3', { class: 'card-title' }, 'Créer une Pétition')
+          ]),
+          CreatePetitionView.successMessage
+            ? m('div', {
+              class: 'notification is-success',
+              style: 'border-radius: 15px; margin-bottom: 1rem;'
+            }, CreatePetitionView.successMessage)
+            : null,
+          CreatePetitionView.errorMessage
+            ? m('div', {
+              class: 'notification is-danger',
+              style: 'border-radius: 15px; margin-bottom: 1rem;'
+            }, CreatePetitionView.errorMessage)
+            : null,
+          m('div', { class: 'field' }, [
+            m('label', { class: 'label' }, 'Titre de la pétition'),
+            m('input', {
+              class: 'input modern-input',
+              type: 'text',
+              placeholder: 'Un titre accrocheur...',
+              value: CreatePetitionView.title,
+              oninput: function (e) {
+                CreatePetitionView.title = e.target.value;
+              }
+            })
+          ]),
+          m('div', { class: 'field' }, [
+            m('label', { class: 'label' }, 'Tags (séparés par des virgules)'),
+            m('input', {
+              class: 'input modern-input',
+              type: 'text',
+              placeholder: 'environnement, société, politique...',
+              value: CreatePetitionView.tag,
+              oninput: function (e) {
+                CreatePetitionView.tag = e.target.value;
+              }
+            })
+          ]),
+          m('div', { class: 'field' }, [
+            m('button', {
+              class: 'modern-button btn-secondary',
+              style: 'width: 100%;',
+              disabled: AppState.isLoading,
+              onclick: function () {
+                CreatePetitionView.errorMessage = "";
+                CreatePetitionView.successMessage = "";
+                Petition.create(Petition.userMail, CreatePetitionView.title, CreatePetitionView.tag);
+              }
+            }, [
+              AppState.isLoading ? m('span', { class: 'loading-spinner' }) : null,
+              ' Créer la pétition'
+            ])
+          ])
+        ]);
+      }
+    };
 
-m.mount(document.body, MainApp);
-</script>
+    // Composant de signature de pétition
+    var SignPetitionView = {
+      title: "",
+      view: function () {
+        return m('div', { class: 'modern-card' }, [
+          m('div', { class: 'card-header' }, [
+            m('div', {
+              class: 'card-icon',
+              style: 'background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);'
+            }, m('i', { class: 'fas fa-signature' })),
+            m('h3', { class: 'card-title' }, 'Signer une Pétition')
+          ]),
+          m('div', { class: 'field' }, [
+            m('label', { class: 'label' }, 'Titre de la pétition'),
+            m('input', {
+              class: 'input modern-input',
+              type: 'text',
+              placeholder: 'Titre exact de la pétition...',
+              value: SignPetitionView.title,
+              oninput: function (e) {
+                SignPetitionView.title = e.target.value;
+              }
+            })
+          ]),
+          m('div', { class: 'field' }, [
+            m('button', {
+              class: 'modern-button btn-success',
+              style: 'width: 100%;',
+              disabled: AppState.isLoading,
+              onclick: function () {
+                Petition.sign(Petition.userMail, SignPetitionView.title);
+              }
+            }, [
+              AppState.isLoading ? m('span', { class: 'loading-spinner' }) : null,
+              ' Signer la pétition'
+            ])
+          ])
+        ]);
+      }
+    };
+
+    // Composant de recherche d'utilisateur
+    var LoadSignedPetitionView = {
+      user: "",
+      view: function () {
+        return m('div', { class: 'modern-card' }, [
+          m('div', { class: 'card-header' }, [
+            m('div', {
+              class: 'card-icon',
+              style: 'background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);'
+            }, m('i', { class: 'fas fa-search' })),
+            m('h3', { class: 'card-title' }, 'Pétitions d\'un Utilisateur')
+          ]),
+          m('div', { class: 'field has-addons' }, [
+            m('div', { class: 'control is-expanded' }, [
+              m('input', {
+                class: 'input modern-input',
+                type: 'email',
+                placeholder: 'Email de l\'utilisateur...',
+                value: LoadSignedPetitionView.user,
+                oninput: function (e) {
+                  LoadSignedPetitionView.user = e.target.value;
+                }
+              })
+            ]),
+            m('div', { class: 'control' }, [
+              m('button', {
+                class: 'modern-button btn-warning',
+                disabled: AppState.isLoading,
+                onclick: function () {
+                  Petition.loadSignedPetitions(LoadSignedPetitionView.user.trim());
+                }
+              }, [
+                AppState.isLoading ? m('span', { class: 'loading-spinner' }) : null,
+                ' Rechercher'
+              ])
+            ])
+          ]),
+          Petition.listUser.length > 0 ? [
+            m('h4', { style: 'margin: 2rem 0 1rem 0; font-weight: 600;' },
+              'Pétitions signées (' + Petition.listUser.length + ')'),
+            m('div', { style: 'max-height: 300px; overflow-y: auto;' },
+              Petition.listUser.map(function (item) {
+                return m('div', {
+                  class: 'box',
+                  style: 'margin-bottom: 1rem; padding: 1rem; border-left: 4px solid #43e97b;'
+                }, [
+                  m('h5', { style: 'font-weight: 600; margin-bottom: 0.5rem;' },
+                    item.properties.title),
+                  m('p', { style: 'color: #666; font-size: 0.9rem;' },
+                    'Par ' + item.properties.author + ' • ' + item.properties.date),
+                  m('div', { class: 'tags' },
+                    item.properties.tags.split(',').map(function (tag) {
+                      return m('span', { class: 'tag is-light' }, tag.trim());
+                    })
+                  )
+                ]);
+              })
+            )
+          ] : null
+        ]);
+      }
+    };
+
+    // Composant de recherche par tag
+    var TaggedPetitionView = {
+      tag: "",
+      view: function () {
+        return m('div', { class: 'modern-card' }, [
+          m('div', { class: 'card-header' }, [
+            m('div', {
+              class: 'card-icon',
+              style: 'background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);'
+            }, m('i', { class: 'fas fa-tags' })),
+            m('h3', { class: 'card-title' }, 'Recherche par Tag')
+          ]),
+          m('div', { class: 'field has-addons' }, [
+            m('div', { class: 'control is-expanded' }, [
+              m('input', {
+                class: 'input modern-input',
+                type: 'text',
+                placeholder: 'Entrez un tag...',
+                value: TaggedPetitionView.tag,
+                oninput: function (e) {
+                  TaggedPetitionView.tag = e.target.value;
+                }
+              })
+            ]),
+            m('div', { class: 'control' }, [
+              m('button', {
+                class: 'modern-button btn-danger',
+                disabled: AppState.isLoading,
+                onclick: function () {
+                  Petition.loadTaggedPetitions(TaggedPetitionView.tag);
+                }
+              }, [
+                AppState.isLoading ? m('span', { class: 'loading-spinner' }) : null,
+                ' Rechercher'
+              ])
+            ])
+          ]),
+          Petition.listTagged.length > 0 ? [
+            m('h4', { style: 'margin: 2rem 0 1rem 0; font-weight: 600;' },
+              'Résultats (' + Petition.listTagged.length + ')'),
+            m('div', { style: 'max-height: 300px; overflow-y: auto;' },
+              Petition.listTagged.map(function (item) {
+                return m('div', {
+                  class: 'box',
+                  style: 'margin-bottom: 1rem; padding: 1rem; border-left: 4px solid #ff6b6b;'
+                }, [
+                  m('h5', { style: 'font-weight: 600; margin-bottom: 0.5rem;' },
+                    item.properties.title),
+                  m('p', { style: 'color: #666; font-size: 0.9rem;' },
+                    'Par ' + item.properties.author + ' • ' + item.properties.date),
+                  m('div', { class: 'tags' },
+                    item.properties.tags.split(',').map(function (tag) {
+                      return m('span', { class: 'tag is-light' }, tag.trim());
+                    })
+                  )
+                ]);
+              })
+            )
+          ] : null
+        ]);
+      }
+    };
+
+    // Composant de recherche des signataires
+    var FindSignersView = {
+      petitionTitle: "",
+
+      view: function () {
+        return m('div', { class: 'modern-card' }, [
+          m('div', { class: 'card-header' }, [
+            m('div', {
+              class: 'card-icon',
+              style: 'background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);'
+            }, m('i', { class: 'fas fa-users' })),
+            m('h3', { class: 'card-title' }, 'Signataires d\'une Pétition')
+          ]),
+          m('div', { class: 'field has-addons' }, [
+            m('div', { class: 'control is-expanded' }, [
+              m('input', {
+                class: 'input modern-input',
+                type: 'text',
+                placeholder: 'Titre de la pétition...',
+                value: FindSignersView.petitionTitle,
+                oninput: function (e) {
+                  FindSignersView.petitionTitle = e.target.value;
+                }
+              })
+            ]),
+            m('div', { class: 'control' }, [
+              m('button', {
+                class: 'modern-button btn-primary',
+                disabled: AppState.isLoading,
+                onclick: function () {
+                  Petition.findSignersOfPetition(FindSignersView.petitionTitle);
+                }
+              }, [
+                AppState.isLoading ? m('span', { class: 'loading-spinner' }) : null,
+                ' Rechercher'
+              ])
+            ])
+          ]),
+          Petition.signers.length > 0 ? [
+            m('h4', { style: 'margin: 2rem 0 1rem 0; font-weight: 600;' },
+              'Signataires (' + Petition.signers.length + ')'),
+            m('div', {
+              class: 'tags',
+              style: 'max-height: 200px; overflow-y: auto; padding: 1rem; background: #f8f9fa; border-radius: 10px;'
+            },
+              Petition.signers.map(function (signer) {
+                return m('span', {
+                  class: 'tag is-primary',
+                  style: 'margin: 0.25rem;'
+                }, signer);
+              })
+            )
+          ] : null
+        ]);
+      }
+    };
+
+    // Composant des top pétitions avec tri par signatures et bouton d'impression
+    var TopPetitionView = {
+      oninit: function () {
+        Petition.loadTopPetitions();
+      },
+
+      view: function () {
+        return m('div', { class: 'modern-card' }, [
+          m('div', { class: 'card-header' }, [
+            m('div', {
+              class: 'card-icon',
+              style: 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);'
+            }, m('i', { class: 'fas fa-trophy' })),
+            m('h3', { class: 'card-title' }, 'Top Pétitions'),
+            m('div', { style: 'margin-left: auto; display: flex; gap: 0.5rem;' }, [
+              m('button', {
+                class: 'modern-button btn-info',
+                onclick: function () {
+                  Petition.sortPetitionsBySignatures();
+                }
+              }, [
+                m('i', { class: 'fas fa-sort-amount-down' }),
+                ' Trier par signatures'
+              ]),
+              m('button', {
+                class: 'modern-button btn-primary',
+                onclick: function () {
+                  Petition.petitionSignersCount = {};
+                  Petition.signersLoading = {};
+                  Petition.petitionSignersDetails = {};
+                  Petition.loadTopPetitions();
+                }
+              }, [
+                m('i', { class: 'fas fa-sync-alt' }),
+                ' Actualiser'
+              ])
+            ])
+          ]),
+          AppState.isLoading ?
+            m('div', { class: 'has-text-centered', style: 'padding: 2rem;' }, [
+              m('span', { class: 'loading-spinner' }),
+              m('p', { style: 'margin-top: 1rem;' }, 'Chargement...')
+            ]) :
+            Petition.listTop.length > 0 ?
+              m('div', { style: 'overflow-x: auto;' }, [
+                m('table', { class: 'table modern-table is-fullwidth' }, [
+                  m('thead', [
+                    m('tr', [
+                      m('th', 'Rang'),
+                      m('th', 'Titre'),
+                      m('th', 'Auteur'),
+                      m('th', 'Date'),
+                      m('th', 'Tags'),
+                      m('th', 'Signatures'),
+                      m('th', 'Actions')
+                    ])
+                  ]),
+                  m('tbody',
+                    Petition.listTop.map(function (item, index) {
+                      return m('tr', { class: 'slide-in' }, [
+                        m('td', [
+                          m('span', {
+                            class: 'tag ' + (index === 0 ? 'is-warning' : index === 1 ? 'is-light' : index === 2 ? 'is-info' : ''),
+                            style: 'font-weight: bold;'
+                          }, '#' + (index + 1))
+                        ]),
+                        m('td', [
+                          m('strong', item.properties.title)
+                        ]),
+                        m('td', item.properties.author),
+                        m('td', [
+                          m('span', { class: 'tag is-light' }, item.properties.date)
+                        ]),
+                        m('td', [
+                          m('div', { class: 'tags' },
+                            item.properties.tags.split(',').map(function (tag) {
+                              return m('span', {
+                                class: 'tag is-primary is-light',
+                                style: 'margin: 0.1rem;'
+                              }, tag.trim());
+                            })
+                          )
+                        ]),
+                        m('td', [
+                          m(SignersCountComponent, { petitionTitle: item.properties.title })
+                        ]),
+                        m('td', [
+                          m('div', { class: 'action-buttons' }, [
+                            // Bouton d'impression des signataires
+                            m('button', {
+                              class: 'modern-button btn-info',
+                              title: 'Imprimer la liste des signataires',
+                              onclick: function () {
+                                Petition.printSigners(item.properties.title);
+                              }
+                            }, [
+                              m('i', { class: 'fas fa-print' }),
+                              ' Imprimer'
+                            ]),
+                            // Bouton de suppression (si propriétaire)
+                            Petition.userMail === item.properties.author ?
+                              m('button', {
+                                class: 'modern-button btn-danger',
+                                title: 'Supprimer cette pétition',
+                                onclick: function () {
+                                  Petition.deletePetition(item.properties.title, item.properties.author);
+                                }
+                              }, [
+                                m('i', { class: 'fas fa-trash' }),
+                                ' Supprimer'
+                              ]) :
+                              m('span', {
+                                class: 'tag',
+                                style: 'font-size: 0.7rem; padding: 0.3rem 0.6rem;'
+                              }, 'Non autorisé')
+                          ])
+                        ])
+                      ]);
+                    })
+                  )
+                ])
+              ]) :
+              m('div', { class: 'has-text-centered', style: 'padding: 2rem; color: #666;' }, [
+                m('i', { class: 'fas fa-inbox', style: 'font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;' }),
+                m('p', 'Aucune pétition trouvée')
+              ])
+        ]);
+      }
+    };
+
+    // Nouveau composant pour afficher le nombre de signataires
+    var SignersCountComponent = {
+      signersCount: null,
+      isLoading: false,
+
+      oninit: function (vnode) {
+        this.isLoading = true;
+        this.signersCount = null;
+
+        var self = this;
+        Petition.getSignersCount(vnode.attrs.petitionTitle)
+          .then(function (count) {
+            self.signersCount = count;
+            self.isLoading = false;
+            m.redraw();
+          })
+          .catch(function (error) {
+            self.signersCount = 0;
+            self.isLoading = false;
+            m.redraw();
+          });
+      },
+
+      view: function (vnode) {
+        if (this.isLoading) {
+          return m('span', { class: 'loading-spinner', style: 'width: 16px; height: 16px;' });
+        }
+
+        return m('span', { class: 'signers-badge' }, [
+          m('i', { class: 'fas fa-users', style: 'margin-right: 0.3rem;' }),
+          this.signersCount !== null ? this.signersCount : '0'
+        ]);
+      }
+    };
+
+    // Navigation par onglets
+    var TabNavigation = {
+      view: function () {
+        var tabs = [
+          { id: 'dashboard', name: 'Dashboard', icon: 'fas fa-home' },
+          { id: 'create', name: 'Créer', icon: 'fas fa-plus' },
+          { id: 'search', name: 'Rechercher', icon: 'fas fa-search' },
+          { id: 'top', name: 'Top Pétitions', icon: 'fas fa-trophy' }
+        ];
+        return m('div', { class: 'tab-container' }, [
+          m('div', { class: 'tab-nav' },
+            tabs.map(function (tab) {
+              return m('button', {
+                class: 'tab-button ' + (AppState.currentTab === tab.id ? 'active' : ''),
+                onclick: function () {
+                  AppState.currentTab = tab.id;
+                }
+              }, [
+                m('i', { class: tab.icon, style: 'margin-right: 0.5rem;' }),
+                tab.name
+              ]);
+            })
+          ),
+          m('div', { class: 'tab-content' }, [
+            TabNavigation.getTabContent()
+          ])
+        ]);
+      },
+      getTabContent: function () {
+        switch (AppState.currentTab) {
+          case 'dashboard':
+            return m('div', { class: 'grid-container' }, [
+              m(CurrentUserView),
+              m(CreatePetitionView),
+              m(SignPetitionView)
+            ]);
+          case 'create':
+            return m('div', { class: 'grid-container' }, [
+              m(CreatePetitionView),
+              m(SignPetitionView)
+            ]);
+          case 'search':
+            return m('div', { class: 'grid-container' }, [
+              m(LoadSignedPetitionView),
+              m(TaggedPetitionView),
+              m(FindSignersView)
+            ]);
+          case 'top':
+            return m(TopPetitionView);
+          default:
+            return m('div', 'Page non trouvée');
+        }
+      }
+    };
+
+    // Application principale
+    var MainApp = {
+      view: function () {
+        return [
+          m(NotificationComponent),
+          m('div', { class: 'main-container' }, [
+            m('div', { class: 'hero-section' }, [
+              m('h1', { class: 'hero-title' }, [
+                m('i', { class: 'fas fa-bullhorn', style: 'margin-right: 1rem;' }),
+                'PetitionHub'
+              ]),
+              m('p', { class: 'hero-subtitle' },
+                'Votre voix compte. Créez, signez et partagez des pétitions qui font la différence.')
+            ]),
+            m(TabNavigation)
+          ]),
+          m('button', {
+            class: 'floating-action',
+            title: 'Actualiser les pétitions',
+            onclick: function () {
+              Petition.petitionSignersCount = {};
+              Petition.signersLoading = {};
+              Petition.petitionSignersDetails = {};
+              Petition.loadTopPetitions();
+              NotificationSystem.show("Données actualisées", "success");
+            }
+          }, m('i', { class: 'fas fa-sync-alt' }))
+        ];
+      }
+    };
+
+    // Montage de l'application
+    m.mount(document.body, MainApp);
+  </script>
+</body>
+
+</html>
